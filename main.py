@@ -1,19 +1,20 @@
 from PyQt6.QtWidgets import (QApplication, QWidget, QTableWidgetItem, QDialog,
                              QMessageBox, QAbstractItemView)
-from PyQt6 import uic
 import sys
 import sqlite3 as sl
+from UI.umain import Ui_Form
+from UI.uaddEditCoffeeForm import Ui_Dialog
+import os
 
 
-class Dialog(QDialog):
+class Dialog(QDialog, Ui_Dialog):
     def __init__(
             self, par, variety=None, roast=None, tp=None,
             desc=None, price=None, vol=None, redact=False
     ):
         super().__init__(par)
         self.par = par
-        dialog_name = "addEditCoffeeForm.ui"
-        uic.loadUi(dialog_name, self)
+        self.setupUi(self)
         self.type_combo.addItems(["", "Молотый", "В зернах"])
         if redact:
             self.variety_edit.setText(variety)
@@ -53,11 +54,12 @@ class Dialog(QDialog):
             return
 
 
-class MainWindow(QWidget):
+class MainWindow(QWidget, Ui_Form):
     def __init__(self):
         super().__init__()
         self.db_name = 'coffee.sqlite'
-        uic.loadUi("main.ui", self)
+        self.get_path()
+        self.setupUi(self)
         self.initUI()
 
     def initUI(self):
@@ -105,7 +107,7 @@ class MainWindow(QWidget):
         return rows, headers
 
     def execute(self, query: str, params: tuple = ()):
-        with sl.connect(self.db_name) as con:
+        with sl.connect(self.db_path) as con:
             cur = con.cursor()
             cur.execute(query, params)
             con.commit()
@@ -113,7 +115,7 @@ class MainWindow(QWidget):
     def fetch(
             self, query: str, params: tuple = ()
     ) -> tuple[list[tuple[str | int, ...]], list[str]]:
-        with sl.connect(self.db_name) as con:
+        with sl.connect(self.db_path) as con:
             cur = con.cursor()
             cur.execute(query, params)
             headers = [d[0] for d in cur.description]
@@ -159,6 +161,15 @@ class MainWindow(QWidget):
                 WHERE id = ?
             """, (variety, roast, tp, desc, price, vol, id))
             self.upd_table()
+
+    def get_path(self):
+        # для exe
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # для py
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.db_path = os.path.join(base_dir, 'data', 'coffee.sqlite')
 
 
 if __name__ == '__main__':
